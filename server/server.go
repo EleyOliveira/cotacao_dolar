@@ -1,10 +1,14 @@
 package main
 
 import (
+	"context"
+	"database/sql"
 	"encoding/json"
-	"io"
 	"log"
 	"net/http"
+	"time"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 type Cotacao struct {
@@ -29,28 +33,49 @@ func main() {
 }
 
 func BuscaCotacaoHandler(w http.ResponseWriter, r *http.Request) {
+
 	cotacao, err := BuscaCotacao()
 	if err != nil {
 		log.Println("Erro ao buscar a cotação")
 	}
+	SalvaCotacaoBD(cotacao.USDBRL.Bid)
 	w.Header().Set("Content-type", "application/json")
 	json.NewEncoder(w).Encode(cotacao)
+
+}
+
+func SalvaCotacaoBD(cotacao string) {
+	var db *sql.DB
+	db, err := sql.Open("sqlite3", "./dbcotacao.sqlite")
+	if err != nil {
+		log.Println(err)
+	}
+	defer db.Close()
+	_, err = db.Exec("INSERT INTO cotacao (valor) VALUES ($1)", cotacao)
+	if err != nil {
+		log.Println(err)
+	}
+
 }
 
 func BuscaCotacao() (*Cotacao, error) {
-	req, err := http.Get("https://economia.awesomeapi.com.br/json/last/USD-BRL")
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, time.Millisecond*200)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, "GET", "https://economia.awesomeapi.com.br/json/last/USD-BRL", nil)
 	if err != nil {
-		return nil, err
+		log.Println("Erro ao criar requisição")
 	}
-	defer req.Body.Close()
-	res, err := io.ReadAll(req.Body)
+
+	res, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, err
+		log.Println(err)
 	}
 	var data Cotacao
-	err = json.Unmarshal(res, &data)
-	if err != nil {
+	decoder := json.NewDecoder(res.Body)
+	if err := decoder.Decode(&data); err != nil {
 		return nil, err
 	}
+
 	return &data, nil
 }
