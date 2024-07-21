@@ -38,29 +38,36 @@ func BuscaCotacaoHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println("Erro ao buscar a cotação")
 	}
-	SalvaCotacaoBD(cotacao.USDBRL.Bid)
-	w.Header().Set("Content-type", "application/json")
-	json.NewEncoder(w).Encode(cotacao)
-
+	err = SalvaCotacaoBD(cotacao.USDBRL.Bid)
+	if err != nil {
+		w.Write([]byte(err.Error()))
+	} else {
+		w.Header().Set("Content-type", "application/json")
+		json.NewEncoder(w).Encode(cotacao.USDBRL.Bid)
+	}
 }
 
-func SalvaCotacaoBD(cotacao string) {
+func SalvaCotacaoBD(cotacao string) error {
 	var db *sql.DB
+
 	db, err := sql.Open("sqlite3", "./dbcotacao.sqlite")
 	if err != nil {
 		log.Println(err)
+		return err
 	}
 	defer db.Close()
 
 	ctx := context.Background()
-	ctx, cancel := context.WithTimeout(ctx, time.Microsecond*1)
+	ctx, cancel := context.WithTimeout(ctx, time.Millisecond*10)
 	defer cancel()
 
 	_, err = db.ExecContext(ctx, "INSERT INTO cotacao (valor) VALUES ($1)", cotacao)
 	if err != nil {
 		log.Println(err)
+		return err
 	}
 
+	return nil
 }
 
 func BuscaCotacao() (*Cotacao, error) {
