@@ -51,7 +51,12 @@ func SalvaCotacaoBD(cotacao string) {
 		log.Println(err)
 	}
 	defer db.Close()
-	_, err = db.Exec("INSERT INTO cotacao (valor) VALUES ($1)", cotacao)
+
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, time.Microsecond*1)
+	defer cancel()
+
+	_, err = db.ExecContext(ctx, "INSERT INTO cotacao (valor) VALUES ($1)", cotacao)
 	if err != nil {
 		log.Println(err)
 	}
