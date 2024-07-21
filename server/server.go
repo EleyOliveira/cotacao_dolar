@@ -50,7 +50,7 @@ func BuscaCotacaoHandler(w http.ResponseWriter, r *http.Request) {
 func SalvaCotacaoBD(cotacao string) error {
 	var db *sql.DB
 
-	db, err := sql.Open("sqlite3", "./dbcotacao.sqlite")
+	db, err := sql.Open("sqlite3", "./cotacaoBD.sqlite")
 	if err != nil {
 		log.Println(err)
 		return err
